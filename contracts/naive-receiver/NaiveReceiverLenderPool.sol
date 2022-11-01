@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/utils/Address.sol";
 /**
  * @title NaiveReceiverLenderPool
  * @author Damn Vulnerable DeFi (https://damnvulnerabledefi.xyz)
+ * @notice possible fix is to check inside the flashLoan that the caller is also
+ * a borrower to prevent other peole from draining others contracts
  */
 contract NaiveReceiverLenderPool is ReentrancyGuard {
 
@@ -22,7 +24,6 @@ contract NaiveReceiverLenderPool is ReentrancyGuard {
 
         uint256 balanceBefore = address(this).balance;
         require(balanceBefore >= borrowAmount, "Not enough ETH in pool");
-
 
         require(borrower.isContract(), "Borrower must be a deployed contract");
         // Transfer ETH and handle control to receiver
