@@ -1,8 +1,10 @@
 testMode: assertion
-balanceContract: 10000000000000000000000
+# must meet the constructor requirements otherwise it will fail due to `echidna-test: Calling the setUp() funciton failed
+# (revert, out-of-gas, sending ether to an non-payable constructor, etc.)`
+balanceContract: 1000000000000000000000
 testLimit: 1000000000
 
-deployer: "0x10000"
-psender: "0x10000"
-contractAddr: "0x10000"
-sender: ["0x10000"]
+deployer: '0x10000'
+psender: '0x10000'
+contractAddr: '0x10000'
+sender: ['0x10000']

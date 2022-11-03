@@ -18,7 +18,7 @@ contract SideEntrancePoolDeployer {
 }
 
 contract EchidnaSideEntranceLenderPool is IFlashLoanEtherReceiver {
-    uint256 private ETHER_IN_POOL = 100 ether;
+    uint256 private ETHER_IN_POOL = 1000 ether;
 
     SideEntranceLenderPool pool;
 
