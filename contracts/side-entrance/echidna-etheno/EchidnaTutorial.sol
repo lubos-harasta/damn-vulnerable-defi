@@ -2,6 +2,13 @@
 pragma solidity ^0.8.4;
 
 import "../SideEntranceLenderPool.sol";
+import "./Debugger.sol";
+
+/**
+ * @dev to run this file use :
+ * npx hardhat clean && npx hardhat compile --force
+ * && echidna-test . --contract E2E --config ./contracts/side-entrance/echidna-etheno/config-tutorial.yaml
+ */
 
 contract E2E is IFlashLoanEtherReceiver {
     SideEntranceLenderPool pool;
@@ -38,8 +45,9 @@ contract E2E is IFlashLoanEtherReceiver {
         }
     }
 
-    function flashLoan(uint256 _amount) public {
-        pool.flashLoan(_amount);
+    function flashLoan() public {
+        Debugger.log("depositAmount", depositAmount);
+        pool.flashLoan(depositAmount);
     }
 
     function testPoolBalance() public view {

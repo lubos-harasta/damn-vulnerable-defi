@@ -1,6 +1,8 @@
 const { ethers } = require('hardhat');
 const { expect } = require('chai');
 
+const APPLY_FIXED_CONTRACT = true;
+
 describe('[Challenge] Side entrance', function () {
   let deployer, attacker;
 
@@ -10,10 +12,19 @@ describe('[Challenge] Side entrance', function () {
     /** SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE */
     [deployer, attacker] = await ethers.getSigners();
 
-    const SideEntranceLenderPoolFactory = await ethers.getContractFactory(
-      'SideEntranceLenderPool',
-      deployer
-    );
+    let SideEntranceLenderPoolFactory;
+    if (APPLY_FIXED_CONTRACT) {
+      SideEntranceLenderPoolFactory = await ethers.getContractFactory(
+        'SideEntranceLenderPoolFixed',
+        deployer
+      );
+    } else {
+      SideEntranceLenderPoolFactory = await ethers.getContractFactory(
+        'SideEntranceLenderPool',
+        deployer
+      );
+    }
+
     this.pool = await SideEntranceLenderPoolFactory.deploy();
 
     await this.pool.deposit({ value: ETHER_IN_POOL });

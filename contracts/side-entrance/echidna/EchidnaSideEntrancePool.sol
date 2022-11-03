@@ -2,56 +2,69 @@
 pragma solidity ^0.8.0;
 
 import "../SideEntranceLenderPool.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 /**
  * @dev to run Echidna:
- * npx hardhat clean && npx hardhat compile --force && echidna-test /src --contract EchidnaSideEntranceLenderPool --config /src/contracts/side-entrance/echidna/config.yaml
+ * echidna-test . --contract EchidnaSideEntranceLenderPool --config ./contracts/side-entrance/echidna/config.yaml
  */
 
-contract EchidnaSideEntranceLenderPool {
-    using Address for address payable;
+contract SideEntrancePoolDeployer {
+    function deployNewPool() public payable returns (SideEntranceLenderPool) {
+        SideEntranceLenderPool p;
+        p = new SideEntranceLenderPool();
+        p.deposit{value: msg.value}();
+        return p;
+    }
+}
 
-    uint256 private ETHER_IN_POOL = 1000e18;
+contract EchidnaSideEntranceLenderPool is IFlashLoanEtherReceiver {
+    uint256 private ETHER_IN_POOL = 100 ether;
 
     SideEntranceLenderPool pool;
+
+    uint256 initialPoolBalance;
+    bool enableWithdraw;
+    bool enableDeposit;
+    uint256 depositAmount;
 
     event EchidnaLogSender(string reason, address sender);
 
     // set up Echidna
     constructor() payable {
-        // deploy the SideEntranceLenderPool
-        pool = new SideEntranceLenderPool();
-        // approve tokens for their transfer into the pool
-        pool.deposit{value: ETHER_IN_POOL}();
-    }
-
-    // @dev would be possible to perform an attack even though we have not know the vulnerability before?
-    function execute(uint256 amount) external payable {
-        require(msg.sender == address(pool), "Sender must be the pool");
-        emit EchidnaLogSender("execute", msg.sender);
-        pool.deposit{value: amount}();
-    }
-
-    function withdrawFromPool() external payable {
-        emit EchidnaLogSender("withdrawFromPool", msg.sender);
-        pool.withdraw();
-    }
-
-    function depositToPool(uint256 _amount) external {
-        emit EchidnaLogSender("depositToPool", msg.sender);
-        pool.deposit{value: _amount}();
-    }
-
-    function flashLoanFromPool(uint256 _amount) external {
-        emit EchidnaLogSender("flashLoanFromPool", msg.sender);
-        pool.flashLoan(_amount);
-    }
-
-    // test invariant
-    function test_balances() public view {
-        assert(address(pool).balance >= ETHER_IN_POOL);
+        require(msg.value == ETHER_IN_POOL);
+        // deployer the pool deployer
+        SideEntrancePoolDeployer p = new SideEntrancePoolDeployer();
+        // deploy the pool by the pool deployer to have different owner
+        pool = p.deployNewPool{value: ETHER_IN_POOL}();
+        // set initial balance
+        initialPoolBalance = address(pool).balance;
     }
 
     receive() external payable {}
+
+    function setEnableWithdraw(bool _enabled) public {
+        enableWithdraw = _enabled;
+    }
+
+    function setEnableDeposit(bool _enabled, uint256 _amount) public {
+        enableDeposit = _enabled;
+        depositAmount = _amount;
+    }
+
+    function execute() external payable override {
+        if (enableWithdraw) {
+            pool.withdraw();
+        }
+        if (enableDeposit) {
+            pool.deposit{value: depositAmount}();
+        }
+    }
+
+    function flashLoan(uint256 _amount) public {
+        pool.flashLoan(_amount);
+    }
+
+    function testPoolBalance() public view {
+        assert(address(pool).balance >= initialPoolBalance);
+    }
 }

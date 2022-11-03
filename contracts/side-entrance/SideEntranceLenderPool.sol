@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/Address.sol";
-import "hardhat/console.sol";
 
 interface IFlashLoanEtherReceiver {
     function execute() external payable;
@@ -19,7 +18,6 @@ contract SideEntranceLenderPool {
 
     function deposit() external payable {
         balances[msg.sender] += msg.value;
-        console.log("Deposited ", msg.value, " by ", msg.sender);
     }
 
     function withdraw() external {

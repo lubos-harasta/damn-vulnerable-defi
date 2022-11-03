@@ -1,12 +1,8 @@
-# 10,000 ether is placed in the EchidnaSideEntranceLenderPool contract.
-balanceContract: 10000000000000000000000
-# Allow for multi-abi use
-multi-abi: true
-# allow to require fails, assertion mode needed
 testMode: assertion
-testLimit: 50000
-shrinkLimit: 1000
-#
-deployer: '0x10000'
-#
-sender: ['0x20000']
+balanceContract: 10000000000000000000000
+testLimit: 1000000000
+
+deployer: "0x10000"
+psender: "0x10000"
+contractAddr: "0x10000"
+sender: ["0x10000"]

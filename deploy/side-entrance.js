@@ -85,8 +85,8 @@ async function main() {
   await pool.deployed();
   console.log(`pool address ${pool.address}`);
 
-  const depositTx = await pool.deposit({ value: ETHER_IN_POOL });
-  await depositTx.wait(1);
+  await pool.deposit({ value: ETHER_IN_POOL });
+  // await depositTx.wait(1);
 }
 
 main()
