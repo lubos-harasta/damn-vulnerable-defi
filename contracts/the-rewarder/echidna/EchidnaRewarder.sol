@@ -45,6 +45,7 @@ contract EchidnaRewarder {
             functionsOrder.length > 0,
             "At least one function must be called."
         );
+        // call function based on the functionOrder array
         for (uint256 i = 0; i < functionsOrder.length; i++) {
             uint256 funcToBeCalled = functionsOrder[i];
             selectFunctionToCall(funcToBeCalled);
@@ -58,6 +59,10 @@ contract EchidnaRewarder {
         );
     }
 
+    /**
+     * @notice call one of defined function
+     * @param funcOrder a number to call the given function
+     */
     function selectFunctionToCall(uint256 funcOrder) internal {
         if (funcOrder == 0) {
             // deposit to pool with prior approval
@@ -84,6 +89,11 @@ contract EchidnaRewarder {
         numArray[2] = num3;
     }
 
+    /**
+     * @notice helper function to generate different functions in different order to be called in receiveFlashLoan()
+     * and thus test all possible scenarios
+     * @param _randomNumber input by Echidna which is used to include/exclude function (see BitMap operation)
+     */
     function generateFuncsToCall(uint256 _randomNumber) external {
         // delete current functionOrder
         delete functionsOrder;
@@ -96,24 +106,37 @@ contract EchidnaRewarder {
             uint256 bitIndex = _randomNumber & (1 << i);
             // if bitIndex is not zero, than include the function selected
             if (bitIndex > 0) {
-                functionsOrder[id] = selectedFunc;
+                functionsOrder.push(selectedFunc);
                 id++;
             }
         }
     }
 
-    function flashLoan(uint256 _amount) public {
+    // THIS APPROACH DOES NOT FUNCTION
+    // function flashLoan(uint256 _amount) public {
+    //     uint256 lastRewardsTimestamp = rewarder.lastRecordedSnapshotTimestamp();
+    //     require(
+    //         block.timestamp >=
+    //             lastRewardsTimestamp + REWARDS_ROUND_MIN_DURATION,
+    //         "It is useless to call flashloan if no rewards can be taken."
+    //     );
+    //     flashLoanAmount = _amount;
+    //     pool.flashLoan(flashLoanAmount);
+    // }
+
+    // THIS APPROACH WORKS
+    function flashLoan() public {
         uint256 lastRewardsTimestamp = rewarder.lastRecordedSnapshotTimestamp();
         require(
             block.timestamp >=
                 lastRewardsTimestamp + REWARDS_ROUND_MIN_DURATION,
             "It is useless to call flashloan if no rewards can be taken."
         );
-        flashLoanAmount = _amount;
-        pool.flashLoan(_amount);
+        flashLoanAmount = damnValuableToken.balanceOf(address(pool));
+        pool.flashLoan(flashLoanAmount);
     }
 
-    // INVARIANT: one user cannot get almost all reward
+    // INVARIANT: one user cannot get almost all of reward
     function testRewards() public view {
         assert(reward < 99 ether);
     }
