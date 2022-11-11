@@ -7,3 +7,11 @@ sender: ['0x30000'] # to have a different sender then deployer
 # fixes the issue with constructor
 # revert, out-of-gas, sending ether to an non-payable constructor
 codeSize: 0xffffffffff
+# corpusDir: './contracts/selfie/echidna/corpus'
+
+# filterBlacklist: true
+# filterFunctions:
+#   [
+#     'EchidnaSelfieGeneric._checkPoolBalance()',
+#     'EchidnaSelfieGeneric.receiveTokens(address,uint256)',
+#   ]
