@@ -57,9 +57,8 @@ contract EchidnaSelfieGeneric {
         queueAction,
         executeAction
     }
-    uint256 actionsLength = 4; // must correspond with the length of Functions enum
+    uint256 actionsLength = 4; // must correspond with the length of Actions
 
-    // Functions private functions;
 
     SelfiePool pool;
     SimpleGovernance governance;
@@ -120,7 +119,7 @@ contract EchidnaSelfieGeneric {
         if (_num == uint256(Actions.transferFrom)) {
             transferFrom();
         }
-        // gueue an action
+        // queue an action
         if (_num == uint256(Actions.queueAction)) {
             try this.queueAction() {} catch {
                 revert("queueAction unsuccessful");
