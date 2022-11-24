@@ -43,10 +43,10 @@ contract EchidnaSelfie {
     uint256 private ACTION_DELAY_IN_SECONDS = 2 days;
     uint256 private TOKENS_IN_POOL = 1_500_000 ether;
 
-    uint256 actionId; // to tract id of queued actions
-    uint256 timestampOfActionQueued; // to track timestamp of queued actions
+    uint256 private actionId; // to tract id of queued actions
+    uint256 private timestampOfActionQueued; // to track timestamp of queued actions
 
-    uint256[] public actionsToBeCalled; // actions to be called in callback function
+    uint256[] private actionsToBeCalled; // actions to be called in callback function
 
     // TODO: no action as a parameter as well?
     enum Actions {
@@ -55,18 +55,19 @@ contract EchidnaSelfie {
         queueAction,
         executeAction
     }
-    uint256 actionsLength = 4; // must correspond with the length of Actions
+    uint256 private actionsLength = 4; // must correspond with the length of Actions
 
     enum Payloads {
         emptyPayload,
         drainAllFunds,
         transferFrom
     }
-    uint256 internal _payloadSet;
-    uint256 payloadsLength = 3; // must correspond with the length of Payloads
-    bytes _payload;
+    uint256 private payloadsLength = 3; // must correspond with the length of Payloads
+    uint256 private _payloadSet;
+    bytes private _payload;
 
-    uint256 private _amountToTransfer;
+    uint256 private _amountToTransferForPayload;
+    uint256 private _amountToTransferForTransferFunction;
     uint256 private _weiAmountForQueueAction;
 
     SelfiePool pool;
@@ -154,24 +155,37 @@ contract EchidnaSelfie {
         if (_num == uint256(Payloads.drainAllFunds)) {
             _payload = abi.encodeWithSignature(
                 "drainAllFunds(address)",
-                address(this) // TODO: no need to parametrize?
+                address(this)
             );
         }
         // transfer
         if (_num == uint256(Payloads.transferFrom)) {
             _payload = abi.encodeWithSignature(
                 "transferFrom(address,address,uint256)",
-                address(pool), // TODO: no need to parametrize?
-                address(this), // TODO: no need to parametrize?
-                _amountToTransfer
+                address(pool),
+                address(this),
+                _amountToTransferForPayload
             );
         }
     }
 
-    function setAmountToTransfer(uint256 _amount) external {
-        _amountToTransfer = _amount;
+    /**
+     * @notice set amount to transfer into payload
+     */
+    function setAmountToTransferForPayload(uint256 _amount) external {
+        _amountToTransferForPayload = _amount;
     }
 
+    /**
+     * @notice set amount to transfer into payload
+     */
+    function setAmountToTransferForTransfer(uint256 _amount) external {
+        _amountToTransferForTransferFunction = _amount;
+    }
+
+    /**
+     * @notice set amount of wei for transferFrom
+     */
     function setWeiAmountForQueueAction(uint256 _amount) external {
         _weiAmountForQueueAction = _amount;
     }
@@ -195,11 +209,6 @@ contract EchidnaSelfie {
     }
 
     function queueAction() public {
-        // create payload
-        // bytes memory payload = abi.encodeWithSignature(
-        //     "drainAllFunds(address)",
-        //     address(this)
-        // );
         // take a snaphost first as it is needed in queueAction()
         token.snapshot();
         // queue the action
@@ -242,7 +251,11 @@ contract EchidnaSelfie {
      */
     function transferFrom() public {
         uint256 _poolBalance = token.balanceOf(address(pool));
-        token.transferFrom(address(pool), address(this), _poolBalance);
+        token.transferFrom(
+            address(pool),
+            address(this),
+            _amountToTransferForTransferFunction
+        );
         uint256 _poolBalanceAfter = token.balanceOf(address(pool));
         require(_poolBalanceAfter > _poolBalance, "Transfer unsuccessful");
     }
@@ -290,7 +303,10 @@ contract EchidnaSelfie {
         }
         if (_payloadSet == uint256(Payloads.transferFrom)) {
             emit PayloadSet("transferFrom(address,address,uint256)");
-            emit PayloadVariable("_amountToTransfer", _amountToTransfer);
+            emit PayloadVariable(
+                "_amountToTransfer",
+                _amountToTransferForPayload
+            );
         }
     }
 
