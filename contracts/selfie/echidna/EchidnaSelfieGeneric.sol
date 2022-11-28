@@ -39,7 +39,7 @@ contract SelfieDeployment {
     }
 }
 
-contract EchidnaSelfie {
+contract EchidnaSelfieGeneric {
     uint256 private ACTION_DELAY_IN_SECONDS = 2 days;
     uint256 private TOKENS_IN_POOL = 1_500_000 ether;
 

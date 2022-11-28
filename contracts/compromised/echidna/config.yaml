@@ -1,0 +1,21 @@
+# testMode: assertion
+testLimit: 50000
+
+sender: [
+    '0x10000',
+    # '0x20000',
+    # '0x30000',
+    # '0xe92401A4d3af5E446d93D11EEc806b1462b39D15', # as a PK has been leaked we can call transactions via this account
+    # '0x81A5D6E50C214044bE44cA0CB057fe119097850c', # as a PK has been leaked we can call transactions via this account
+    '0xe92401a4d3af5e446d93d11eec806b1462b39d15', # as a PK has been leaked we can call transactions via this account
+    '0x81a5d6e50c214044be44ca0cb057fe119097850c', # as a PK has been leaked we can call transactions via this account
+  ]
+multi-abi: true
+
+# fixes the issue with constructor
+# revert, out-of-gas, sending ether to an non-payable constructor
+codeSize: 0xffffffffff
+corpusDir: './contracts/compromised/echidna/corpus'
+
+balanceContract: 10000000000000000000000 # 10,000 ether
+# balanceContract: 9990000000000000000000 # 9,990 ether

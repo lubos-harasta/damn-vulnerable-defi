@@ -1,7 +1,7 @@
 node_modules
 build
 contracts/attacker-contracts/*.sol
-contracts/*/corpus
+contracts/*/echidna/corpus
 *.solved.js
 cache
 .openzeppelin
