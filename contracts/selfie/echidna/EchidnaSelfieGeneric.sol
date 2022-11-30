@@ -39,42 +39,33 @@ contract EchidnaSelfieGeneric {
     uint256 private ACTION_DELAY_IN_SECONDS = 2 days;
     uint256 private TOKENS_IN_POOL = 1_500_000 ether;
 
-    uint256 private actionId; // to tract id of queued actions
+    uint256 private actionId; // to track id of queued actions
     uint256[] private actionsToBeCalled; // actions to be called in callback function
 
     // all possible actions for callback
-    enum Actions {
-        noActionToBeCalled,
+    enum CallbackActions {
         drainAllFunds,
         transferFrom,
         queueAction,
         executeAction
     }
-    uint256 private actionsLength = 5; // must correspond with the length of Actions
-
-    // function's parameters to be defined by Echidna
-    struct FunctionParameters {
-        bool amountTransferForTransferFunction;
-        bool amountTransferForPayload;
-        bool weiInQueueAction;
-        bool payloadInQueueAction;
-    }
-    FunctionParameters functionParametersSet; // to check if parameter has been already set
+    uint256 private callbackActionsLength = 4; // must correspond with the length of Actions
 
     // queueAction payloads to be created by Echidna
-    enum Payloads {
-        emptyPayload,
+    enum PayloadsForQueueAction {
+        emptyPayload, // @NOTE this is not necessary as _payload's is defaulted to empty but kept for logging purposes
         drainAllFunds,
         transferFrom
     }
     uint256 private payloadsLength = 3; // must correspond with the length of Payloads
     uint256 private _payloadSet; // to know which payload has been set (logging purposes)
-    bytes private _payload; // current payload
-
-    // other parameters to be set by echidna
-    uint256 private _amountToTransferForPayloadForQueueAction;
+    // queueAction parameters:
+    // current payload for queueAction
+    bytes private _payload;
+    // the second queueAction parameters
     uint256 private _weiAmountForQueueAction;
-    uint256 private _amountToTransferForTransferFunction;
+    // transfer function parameter
+    uint256 private _amountForTransferFrom;
 
     SelfiePool pool;
     SimpleGovernance governance;
@@ -91,6 +82,9 @@ contract EchidnaSelfieGeneric {
         (pool, governance, token) = deployer.deployContracts();
     }
 
+    /**
+     * @notice to call a flash loan
+     */
     function flashLoan() public {
         // borrow max amount of tokens
         uint256 borrowAmount = token.balanceOf(address(pool)); // TODO: parametrize?
@@ -113,7 +107,7 @@ contract EchidnaSelfieGeneric {
     }
 
     /**
-     * @notice actions to be called once receiveTokens() is called
+     * @notice actions to be called once receiveTokens() of this contract is called
      */
     function callbackActions() internal {
         uint256 genArrLength = actionsToBeCalled.length;
@@ -131,83 +125,62 @@ contract EchidnaSelfieGeneric {
      * @param _num a number representing the action to be called
      */
     function callAction(uint256 _num) internal {
-        // no action
-        if (_num == uint256(Actions.noActionToBeCalled)) {
-            // just do nothing
-        }
         // drain all funds
-        if (_num == uint256(Actions.drainAllFunds)) {
+        if (_num == uint256(CallbackActions.drainAllFunds)) {
             drainAllFunds();
         }
         // transfer funds
-        if (_num == uint256(Actions.transferFrom)) {
+        if (_num == uint256(CallbackActions.transferFrom)) {
             transferFrom();
-            // reset setter after the call
-            functionParametersSet.amountTransferForTransferFunction = false;
         }
         // queue an action
-        if (_num == uint256(Actions.queueAction)) {
-            // reset setters after the call
-            functionParametersSet.payloadInQueueAction = false;
-            functionParametersSet.weiInQueueAction = false;
-            if (_payloadSet == uint256(Payloads.transferFrom)) {
-                functionParametersSet.amountTransferForPayload = false;
-            }
+        if (_num == uint256(CallbackActions.queueAction)) {
             try this.queueAction() {} catch {
                 revert("queueAction unsuccessful");
             }
         }
         // execute an action
-        if (_num == uint256(Actions.executeAction)) {
+        if (_num == uint256(CallbackActions.executeAction)) {
             try this.executeAction() {} catch {
                 revert("queueAction unsuccessful");
             }
         }
     }
 
-    //////////////////////////////////////////////
-    // PUSHERS AND SETTTERS OF CALLBACK ACTIONS //
-    //////////////////////////////////////////////
+    //////////////////////
+    // CALLBACK ACTIONS //
+    //////////////////////
 
-    ////////////////////////
-    // 1: drainAllFunds() //
+    // 1: drainAllFunds()
     function drainAllFunds() public {
         pool.drainAllFunds(address(this));
     }
 
     function pushDrainAllFundsToCallback() external {
-        actionsToBeCalled.push(uint256(Actions.drainAllFunds));
+        actionsToBeCalled.push(uint256(CallbackActions.drainAllFunds));
     }
 
-    ///////////////////////
-    // 2: transferFrom() //
-    // -> pushers: pushTransferFromToCallback()
-    // -> setters: setAmountToTransferForTransfer()
+    // 2: transferFrom()
     function transferFrom() public {
         token.transferFrom(
             address(pool),
             address(this),
-            _amountToTransferForTransferFunction
+            _amountForTransferFrom
         );
     }
 
     function pushTransferFromToCallback() external {
-        require(
-            functionParametersSet.amountTransferForTransferFunction,
-            "Amount to Transfer has not been defined"
-        );
-        actionsToBeCalled.push(uint256(Actions.transferFrom));
+        actionsToBeCalled.push(uint256(CallbackActions.transferFrom));
     }
 
-    function setAmountToTransferForTransfer(uint256 _amount) external {
-        _amountToTransferForTransferFunction = _amount;
-        functionParametersSet.amountTransferForTransferFunction = true;
+    /**
+     * @dev _amountForTransferFrom is used in three different scenarios (in callback, in payload, and in direct call)
+     */
+    function setAmountForTransferFrom(uint256 _amount) external {
+        _amountForTransferFrom = _amount;
     }
 
-    //////////////////////
-    // 3: queueAction() //
-    // -> pushers: pushQueueActionToCallback()
-    // -> setters: setWeiAmountForQueueAction(), setPayload(), setAmountToTransferForPayload()
+    // 3: queueAction()
     function queueAction() public {
         require(
             address(this).balance >= _weiAmountForQueueAction,
@@ -223,64 +196,56 @@ contract EchidnaSelfieGeneric {
         );
     }
 
-    function pushQueueActionToCallback() external {
+    function pushQueueActionToCallback(
+        uint256 _weiAmount,
+        uint256 _payloadNum
+    ) external {
+        // @TODO: REQUIRE CHECK ADDED HERE, CONSIDER TO REMOVE IT FROM queueAction as well? 
         require(
-            functionParametersSet.payloadInQueueAction == true,
-            "Payload must be specified."
+            address(this).balance >= _weiAmount,
+            "Not sufficient account balance to queue an action"
         );
-        require(
-            functionParametersSet.weiInQueueAction == true,
-            "Amount of WEI must be specified."
-        );
-        actionsToBeCalled.push(uint256(Actions.queueAction));
+        // Add the action into callback array
+        actionsToBeCalled.push(uint256(CallbackActions.queueAction));
+        // Define parameters
+        // 1: set WEI for queue action
+        _weiAmountForQueueAction = _weiAmount;
+        // 2: create payload
+        setPayload(_payloadNum);
     }
 
-    function setWeiAmountForQueueAction(uint256 _amount) external {
-        require(
-            address(this).balance >= _amount,
-            "Not sufficient account balance"
-        );
-        // _amount = _amount % address(this).balance;
-        _weiAmountForQueueAction = _amount;
-        // _weiAmountForQueueAction = 0;
-        functionParametersSet.weiInQueueAction = true;
-    }
-
-    function setPayload(uint256 _num) external {
-        _num = _num % actionsLength;
-        // update state variables
-        _payloadSet = _num; // to know which payload use in queueAction()
-        functionParametersSet.payloadInQueueAction = true;
-        // create payloads:
-        //  - empty payload
-        if (_num == uint256(Payloads.emptyPayload)) {
+    /**
+     * @notice create payload for queue action
+     * @param _payloadNum a number to decide which payload to be created
+     */
+    function setPayload(uint256 _payloadNum) internal {
+        // optimization: to create only valid payloads, narrow down the _payloadNum
+        _payloadNum = _payloadNum % callbackActionsLength;
+        // update the state to know which payload was used in queueAction() (logging purposes, see emitPayloadCreated())
+        _payloadSet = _payloadNum;
+        // create payloads
+        //  - empty payload:
+        //  @NOTE this is not necessary as _payload's is defaulted to be empty
+        //  but kept for logging purposes
+        if (_payloadNum == uint256(PayloadsForQueueAction.emptyPayload)) {
             _payload = "";
         }
-        //  - drainAllFunds
-        if (_num == uint256(Payloads.drainAllFunds)) {
+        // - drainAllFunds
+        if (_payloadNum == uint256(PayloadsForQueueAction.drainAllFunds)) {
             _payload = abi.encodeWithSignature(
                 "drainAllFunds(address)",
                 address(this)
             );
         }
-        //  - transfer
-        if (_num == uint256(Payloads.transferFrom)) {
-            require(
-                functionParametersSet.amountTransferForPayload == true,
-                "amountTransferForPayload has not been set"
-            );
+        // - transfer
+        if (_payloadNum == uint256(PayloadsForQueueAction.transferFrom)) {
             _payload = abi.encodeWithSignature(
                 "transferFrom(address,address,uint256)",
                 address(pool),
                 address(this),
-                _amountToTransferForPayloadForQueueAction // needs to be set
+                _amountForTransferFrom
             );
         }
-    }
-
-    function setAmountToTransferForPayload(uint256 _amount) external {
-        _amountToTransferForPayloadForQueueAction = _amount;
-        functionParametersSet.amountTransferForPayload = true;
     }
 
     ////////////////////////
@@ -298,11 +263,12 @@ contract EchidnaSelfieGeneric {
             block.timestamp >= proposedAt + ACTION_DELAY_IN_SECONDS,
             "Time for action execution has not passed yet"
         );
-        governance.executeAction{value: weiAmount}(actionId); // TODO: Add if statement for weiAmount == 0?
+        // Action
+        governance.executeAction{value: weiAmount}(actionId);
     }
 
     function pushExecuteActionToCallback() external {
-        actionsToBeCalled.push(uint256(Actions.executeAction));
+        actionsToBeCalled.push(uint256(CallbackActions.executeAction));
     }
 
     /////////////
@@ -325,33 +291,30 @@ contract EchidnaSelfieGeneric {
      * @param _actionNumber a number of action executed
      */
     function emitActionExecuted(uint256 _actionNumber) internal {
-        if (_actionNumber == uint256(Actions.queueAction)) {
+        if (_actionNumber == uint256(CallbackActions.queueAction)) {
             emit ActionCalledInCallback("queueAction()");
         }
-        if (_actionNumber == uint256(Actions.executeAction)) {
+        if (_actionNumber == uint256(CallbackActions.executeAction)) {
             emit ActionCalledInCallback("executeAction()");
         }
-        if (_actionNumber == uint256(Actions.drainAllFunds)) {
+        if (_actionNumber == uint256(CallbackActions.drainAllFunds)) {
             emit ActionCalledInCallback("drainAllFunds()");
         }
-        if (_actionNumber == uint256(Actions.transferFrom)) {
+        if (_actionNumber == uint256(CallbackActions.transferFrom)) {
             emit ActionCalledInCallback("transferFrom()");
         }
     }
 
     function emitPayloadCreated() internal {
-        if (_payloadSet == uint256(Payloads.emptyPayload)) {
+        if (_payloadSet == uint256(PayloadsForQueueAction.emptyPayload)) {
             emit PayloadSet("Empty payload");
         }
-        if (_payloadSet == uint256(Payloads.drainAllFunds)) {
+        if (_payloadSet == uint256(PayloadsForQueueAction.drainAllFunds)) {
             emit PayloadSet("drainAllFunds(address)");
         }
-        if (_payloadSet == uint256(Payloads.transferFrom)) {
+        if (_payloadSet == uint256(PayloadsForQueueAction.transferFrom)) {
             emit PayloadSet("transferFrom(address,address,uint256)");
-            emit PayloadVariable(
-                "_amountToTransfer",
-                _amountToTransferForPayloadForQueueAction
-            );
+            emit PayloadVariable("_amountToTransfer", _amountForTransferFrom);
         }
     }
 
