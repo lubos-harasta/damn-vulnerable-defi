@@ -6,6 +6,7 @@ contracts/*/echidna/corpus
 cache
 .openzeppelin
 .vscode
+.mocharc.json
 artifacts
 cache
 crytic-export

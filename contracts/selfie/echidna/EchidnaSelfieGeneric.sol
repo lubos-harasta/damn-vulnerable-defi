@@ -53,11 +53,10 @@ contract EchidnaSelfieGeneric {
 
     // queueAction payloads to be created by Echidna
     enum PayloadsForQueueAction {
-        emptyPayload, // @NOTE this is not necessary as _payload's is defaulted to empty but kept for logging purposes
         drainAllFunds,
         transferFrom
     }
-    uint256 private payloadsLength = 3; // must correspond with the length of Payloads
+    uint256 private payloadsLength = 2; // must correspond with the length of Payloads
     uint256 private _payloadSet; // to know which payload has been set (logging purposes)
     // queueAction parameters:
     // current payload for queueAction
@@ -112,7 +111,7 @@ contract EchidnaSelfieGeneric {
     function callbackActions() internal {
         uint256 genArrLength = actionsToBeCalled.length;
         if (genArrLength != 0) {
-            for (uint256 i; i < genArrLength - 1; i++) {
+            for (uint256 i; i < genArrLength; i++) {
                 callAction(actionsToBeCalled[i]);
             }
         } else {
@@ -174,7 +173,8 @@ contract EchidnaSelfieGeneric {
     }
 
     /**
-     * @dev _amountForTransferFrom is used in three different scenarios (in callback, in payload, and in direct call)
+     * @dev _amountForTransferFrom is used in three different scenarios
+     * (i.e., in callback, in payload, and in direct call)
      */
     function setAmountForTransferFrom(uint256 _amount) external {
         _amountForTransferFrom = _amount;
@@ -200,7 +200,6 @@ contract EchidnaSelfieGeneric {
         uint256 _weiAmount,
         uint256 _payloadNum
     ) external {
-        // @TODO: REQUIRE CHECK ADDED HERE, CONSIDER TO REMOVE IT FROM queueAction as well? 
         require(
             address(this).balance >= _weiAmount,
             "Not sufficient account balance to queue an action"
@@ -220,24 +219,17 @@ contract EchidnaSelfieGeneric {
      */
     function setPayload(uint256 _payloadNum) internal {
         // optimization: to create only valid payloads, narrow down the _payloadNum
-        _payloadNum = _payloadNum % callbackActionsLength;
+        _payloadNum = _payloadNum % payloadsLength;
         // update the state to know which payload was used in queueAction() (logging purposes, see emitPayloadCreated())
         _payloadSet = _payloadNum;
-        // create payloads
-        //  - empty payload:
-        //  @NOTE this is not necessary as _payload's is defaulted to be empty
-        //  but kept for logging purposes
-        if (_payloadNum == uint256(PayloadsForQueueAction.emptyPayload)) {
-            _payload = "";
-        }
-        // - drainAllFunds
+        // create payload of drainAllFunds
         if (_payloadNum == uint256(PayloadsForQueueAction.drainAllFunds)) {
             _payload = abi.encodeWithSignature(
                 "drainAllFunds(address)",
                 address(this)
             );
         }
-        // - transfer
+        // create payload of transfer
         if (_payloadNum == uint256(PayloadsForQueueAction.transferFrom)) {
             _payload = abi.encodeWithSignature(
                 "transferFrom(address,address,uint256)",
@@ -305,10 +297,10 @@ contract EchidnaSelfieGeneric {
         }
     }
 
+    /**
+     * @notice emit event of a payload created in queueAction()
+     */
     function emitPayloadCreated() internal {
-        if (_payloadSet == uint256(PayloadsForQueueAction.emptyPayload)) {
-            emit PayloadSet("Empty payload");
-        }
         if (_payloadSet == uint256(PayloadsForQueueAction.drainAllFunds)) {
             emit PayloadSet("drainAllFunds(address)");
         }
@@ -330,6 +322,14 @@ contract EchidnaSelfieGeneric {
         } catch {
             // log which payload has been set
             emitPayloadCreated();
+            emit PayloadVariable(
+                "_weiAmountForQueueAction: ",
+                _weiAmountForQueueAction
+            );
+            emit PayloadVariable(
+                "_weiAmountForQueueAction: ",
+                _weiAmountForQueueAction
+            );
             // log actions called
             for (uint256 i; i < actionsToBeCalled.length; i++) {
                 emitActionExecuted(actionsToBeCalled[i]);
