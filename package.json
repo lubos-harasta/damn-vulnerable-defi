@@ -15,7 +15,7 @@
     "the-rewarder": "yarn hardhat test test/the-rewarder/the-rewarder.challenge.js",
     "the-rewarder-echidna": "npx hardhat clean && npx hardhat compile --force && echidna-test . --contract EchidnaRewarderE2E --config ./contracts/the-rewarder/echidna/config-tutorial.yaml",
     "selfie": "yarn hardhat test test/selfie/selfie.challenge.js",
-    "selfie-echidna": "npx hardhat clean && npx hardhat compile --force && echidna-test . --contract EchidnaSelfieGeneric --config ./contracts/selfie/echidna/config.yaml",
+    "selfie-echidna": "npx hardhat clean && npx hardhat compile --force && echidna-test . --contract EchSelGen --config ./contracts/selfie/echidna/config.yaml",
     "compromised": "yarn hardhat test test/compromised/compromised.challenge.js",
     "compromised-test": "yarn hardhat test test/compromised/echidna-compromised.js",
     "compromised-echidna": "npx hardhat clean && npx hardhat compile --force && echidna-test . --contract EchidnaCompromised --config ./contracts/compromised/echidna/config.yaml",
