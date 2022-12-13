@@ -1,0 +1,14 @@
+testMode: assertion
+seqLen: 100
+testLimit: 500000
+corpusDir: './contracts/puppet-v2/echidna/corpus'
+
+# 30 ether is placed in the contract.
+balanceContract: 30000000000000000000
+# balanceContract: 40000000000000000000 // used for testing if 30 ethers is not enough
+# Allow for multi-abi use
+multi-abi: true
+
+# fixes the issue with constructor
+# revert, out-of-gas, sending ether to an non-payable constructor
+codeSize: 0xffffffffff

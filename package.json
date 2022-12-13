@@ -21,6 +21,8 @@
     "compromised-echidna": "npx hardhat clean && npx hardhat compile --force && echidna-test . --contract EchidnaCompromised --config ./contracts/compromised/echidna/config.yaml",
     "puppet": "yarn hardhat test test/puppet/puppet.challenge.js",
     "puppet-v2": "yarn hardhat test test/puppet-v2/puppet-v2.challenge.js",
+    "puppet-v2-echidna": "npx hardhat clean && npx hardhat compile --force && echidna-test . --contract EchidnaPuppetV2 --config ./contracts/puppet-v2/echidna/config.yaml",
+    "puppet-v2-echidna-setup": "yarn hardhat test test/puppet-v2/echidna_puppet-v2_setup.js",
     "free-rider": "yarn hardhat test test/free-rider/free-rider.challenge.js",
     "backdoor": "yarn hardhat test test/backdoor/backdoor.challenge.js",
     "climber": "yarn hardhat test test/climber/climber.challenge.js",

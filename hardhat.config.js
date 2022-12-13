@@ -17,6 +17,15 @@ module.exports = {
       { version: '0.8.7' },
       { version: '0.7.6' },
       { version: '0.6.6' },
+      {
+        version: '0.5.16',
+      },
+      {
+        version: '0.6.2',
+      },
+      {
+        version: '0.6.6',
+      },
     ],
   },
   /* COMMENTED OUT otherwise crytic-compile would not compile;
