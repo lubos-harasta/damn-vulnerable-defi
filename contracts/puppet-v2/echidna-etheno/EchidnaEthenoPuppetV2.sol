@@ -9,10 +9,11 @@ import "./IPupperV2Pool.sol";
 import "./IWETH9.sol";
 
 contract EchidnaEthenoPuppetV2 {
-    bool immutable DEBUGGING_ENABLED = true;
-    bool private initialized;
+    bool immutable DEBUGGING_ENABLED = true; // for debugging purposes during constructing a fuzzing session
+    bool private initialized; // to call transferDVTToThisContract() only once
     uint256 ATTACKER_INITIAL_TOKEN_BALANCE = 10_000 ether;
 
+    // deployed contracts' addresses by etheno to ganache
     address constant TOKEN_ADDR = 0x1dC4c1cEFEF38a777b15aA20260a54E584b16C48;
     address constant WETH9_ADDR = 0x1D7022f5B17d2F8B695918FB48fa1089C9f85401;
     address constant ROUTER_ADDR = 0x0B1ba0af832d7C05fD64161E0Db78E85978E8082;
@@ -42,11 +43,13 @@ contract EchidnaEthenoPuppetV2 {
             address(ATTACKER_ADDR).balance <= 20 ether,
             "Wrong setup: More ETH than expected"
         );
-        // approve attacker's token to this contract
+        // TODO: the following code commented out as it seems not to be functioning
+        // // approve attacker's token to this contract
         // bool successApprove = token.approve(address(this), type(uint256).max);
         // require(successApprove, "Approval unsuccessful");
     }
 
+    // to be able to receive ETH from Uniswap
     receive() external payable {}
 
     /**
@@ -102,7 +105,7 @@ contract EchidnaEthenoPuppetV2 {
         uint256 priceBefore = pool.calculateDepositOfWETHRequired(
             token.balanceOf(address(pool))
         );
-        // ACTION: swap amount of dvt to eth
+        // ACTION: swap the _amount of DVT to ETH
         router.swapExactTokensForETH(
             _amount,
             0,
@@ -137,6 +140,82 @@ contract EchidnaEthenoPuppetV2 {
         assert(ethBalance < address(address(this)).balance);
         assert(priceAfter < priceBefore);
     }
+
+    /**
+     * @notice deposit ETH to WETH
+     * @dev based on the scenario; attacker owns 20 ETH in his/her EOA
+     */
+    function depositEthToWeth() external payable {
+        // PRECONDITIONS
+        require(msg.sender == ATTACKER_ADDR, "depositEthToWeth:Wrong account");
+        require(msg.value > 0, "Out of scenario's range");
+        // require(msg.value > 0 && address(ATTACKER_ADDR).balance >= msg.value, "Out of scenario's range"); // this was added as Echidna was able to deposit more ETH than attacker actually had
+        uint256 wethBalanceBefore = weth.balanceOf(address(this));
+        // ACTION: deposit ETH and get WETH
+        weth.deposit{value: msg.value}();
+        // DEBUGGING
+        if (DEBUGGING_ENABLED) {
+            Debugger.log("Msg.value:", msg.value);
+            Debugger.log("wethBalanceBefore:", wethBalanceBefore);
+            Debugger.log("wethBalanceAfter:", weth.balanceOf(address(this)));
+        }
+        // POSTCONDITIONS
+        assert(weth.balanceOf(address(this)) > wethBalanceBefore);
+    }
+
+    /**
+     * @notice test borrow DVT tokens from Puppet-V2 pool
+     * @dev INVARIANT: can be the puppet pool drained to zero?
+     * TODO: Should we split this function into two seperate functions?
+     *  one function to borrow DVT from the pool (with a parameter = an ammount to borrow)
+     *  and the second one to just test invariant function?
+     */
+    function testBorrowDvtFromPool() external {
+        // PRECONDITIONS
+        uint256 poolBalance = token.balanceOf(address(pool));
+        uint256 senderWethBalance = weth.balanceOf(address(this));
+        uint256 wethDepositRequired = pool.calculateDepositOfWETHRequired(
+            poolBalance
+        );
+        require(
+            senderWethBalance >= wethDepositRequired,
+            "Not enough WETH to borrow DVT"
+        );
+        // ACTIONS
+        // approval
+        bool approvalSucess = weth.approve(address(pool), wethDepositRequired);
+        require(approvalSucess, "WETH Approval unsuccessful");
+        // borrow
+        uint256 attackerTokenBalanceBefore = token.balanceOf(address(this));
+        pool.borrow(poolBalance);
+        // debugging
+        if (DEBUGGING_ENABLED) {
+            Debugger.log("wethDepositRequired:", wethDepositRequired);
+            Debugger.log("senderWethBalanceBefore:", senderWethBalance);
+            Debugger.log(
+                "senderWethBalanceAfter:",
+                weth.balanceOf(address(this))
+            );
+            Debugger.log("initPoolBalanceBefore:", poolBalance);
+            Debugger.log(
+                "initPoolBalanceAfter:",
+                token.balanceOf(address(token))
+            );
+            Debugger.log("userTokenBalanceBefore:", attackerTokenBalanceBefore);
+            Debugger.log(
+                "userTokenBalanceAfter:",
+                token.balanceOf(address(address(this)))
+            );
+        }
+        // POSTCONDITIONS
+        assert(token.balanceOf(address(this)) > attackerTokenBalanceBefore);
+        // INVARIANT: Pool cannot be drained
+        assert(token.balanceOf(address(pool)) > 0);
+    }
+
+    //////////////////////
+    // NOT USED ANYMORE //
+    //////////////////////
 
     // /**
     //  * @notice swap all DVT tokens of this contract to ETH
@@ -196,75 +275,4 @@ contract EchidnaEthenoPuppetV2 {
     //     assert(ethBalance < address(address(this)).balance);
     //     assert(priceAfter < priceBefore);
     // }
-
-    /**
-     * @notice deposit ETH to WETH
-     * @dev based on the scenario; attacker owns 20 ETH in his/her EOA
-     */
-    function depositEthToWeth() external payable {
-        // PRECONDITIONS
-        require(msg.sender == ATTACKER_ADDR, "depositEthToWeth:Wrong account");
-        require(msg.value > 0, "Out of scenario's range");
-        // require(msg.value > 0 && address(ATTACKER_ADDR).balance >= msg.value, "Out of scenario's range"); // this was added as Echidna was able to deposit more ETH than attacker actually had
-        uint256 wethBalanceBefore = weth.balanceOf(address(this));
-        // ACTION: deposit ETH and get WETH
-        weth.deposit{value: msg.value}();
-        // DEBUGGING
-        if (DEBUGGING_ENABLED) {
-            Debugger.log("Msg.value:", msg.value);
-            Debugger.log("wethBalanceBefore:", wethBalanceBefore);
-            Debugger.log("wethBalanceAfter:", weth.balanceOf(address(this)));
-        }
-        // POSTCONDITIONS
-        assert(weth.balanceOf(address(this)) > wethBalanceBefore);
-    }
-
-    /**
-     * @notice test borrow DVT tokens from Puppet-V2 pool
-     * @dev INVARIANT: can be the puppet pool drained to zero?
-     * TODO: split this function into borrow function with a parameter (ammount to borrow)
-     *  and test invariant function?
-     */
-    function testBorrowDvtFromPool() external {
-        // PRECONDITIONS
-        uint256 poolBalance = token.balanceOf(address(pool));
-        uint256 senderWethBalance = weth.balanceOf(address(this));
-        uint256 wethDepositRequired = pool.calculateDepositOfWETHRequired(
-            poolBalance
-        );
-        require(
-            senderWethBalance >= wethDepositRequired,
-            "Not enough WETH to borrow DVT"
-        );
-        // ACTIONS
-        // approval
-        bool approvalSucess = weth.approve(address(pool), wethDepositRequired);
-        require(approvalSucess, "WETH Approval unsuccessful");
-        // borrow
-        uint256 attackerTokenBalanceBefore = token.balanceOf(address(this));
-        pool.borrow(poolBalance);
-        // debugging
-        if (DEBUGGING_ENABLED) {
-            Debugger.log("wethDepositRequired:", wethDepositRequired);
-            Debugger.log("senderWethBalanceBefore:", senderWethBalance);
-            Debugger.log(
-                "senderWethBalanceAfter:",
-                weth.balanceOf(address(this))
-            );
-            Debugger.log("initPoolBalanceBefore:", poolBalance);
-            Debugger.log(
-                "initPoolBalanceAfter:",
-                token.balanceOf(address(token))
-            );
-            Debugger.log("userTokenBalanceBefore:", attackerTokenBalanceBefore);
-            Debugger.log(
-                "userTokenBalanceAfter:",
-                token.balanceOf(address(address(this)))
-            );
-        }
-        // POSTCONDITIONS
-        assert(token.balanceOf(address(this)) > attackerTokenBalanceBefore);
-        // INVARIANT
-        assert(token.balanceOf(address(pool)) > 0);
-    }
 }
