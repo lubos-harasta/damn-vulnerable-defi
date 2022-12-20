@@ -1,0 +1,13 @@
+initialize: ./contracts/puppet-v2/echidna-etheno/init.json
+testMode: assertion
+seqLen: 100
+testLimit: 150000
+corpusDir: './contracts/puppet-v2/echidna-etheno/corpus'
+multi-abi: true
+# impersonate the attacker
+sender: ['0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb']
+deployer: '0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb'
+psender: '0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb'
+# fixes the issue with constructor
+# revert, out-of-gas, sending ether to an non-payable constructor
+codeSize: 0xffffffffff

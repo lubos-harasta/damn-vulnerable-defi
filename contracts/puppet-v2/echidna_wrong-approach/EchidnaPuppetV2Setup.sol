@@ -10,7 +10,7 @@ import "./libraries/UniswapV2Library.sol";
 import "./EchidnaDamnValuableToken.sol"; // needed to decrease pragma version due to compiler error (Error HH606)
 import "./EchidnaWETH9.sol"; // the same reason as above
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 /**
  * @title PuppetV2Pool

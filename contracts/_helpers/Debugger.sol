@@ -9,6 +9,7 @@ library Debugger {
     event Debug(string description, string data);
     event Debug(string description, bytes32 data);
     event Debug(string description, uint256 data);
+    event Debug(string description, address data);
 
     function log(string memory description, string memory data) internal {
         emit Debug(description, data);
@@ -19,6 +20,10 @@ library Debugger {
     }
 
     function log(string memory description, uint256 data) internal {
+        emit Debug(description, data);
+    }
+
+    function log(string memory description, address data) internal {
         emit Debug(description, data);
     }
 }

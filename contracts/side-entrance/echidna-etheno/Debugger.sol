@@ -2,7 +2,7 @@
 pragma solidity 0.8.7;
 
 /**
- * library from https://github.com/rappie/echidna-flashloan-poc 
+ * library from https://github.com/rappie/echidna-flashloan-poc
  */
 
 library Debugger {
