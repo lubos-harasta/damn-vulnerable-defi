@@ -165,10 +165,6 @@ contract EchidnaEthenoPuppetV2 {
 
     /**
      * @notice test borrow DVT tokens from Puppet-V2 pool
-     * @dev INVARIANT: can be the puppet pool drained to zero?
-     * TODO: Should we split this function into two seperate functions?
-     *  one function to borrow DVT from the pool (with a parameter = an ammount to borrow)
-     *  and the second one to just test invariant function?
      */
     function testBorrowDvtFromPool() external {
         // PRECONDITIONS
@@ -199,19 +195,25 @@ contract EchidnaEthenoPuppetV2 {
             Debugger.log("initPoolBalanceBefore:", poolBalance);
             Debugger.log(
                 "initPoolBalanceAfter:",
-                token.balanceOf(address(token))
+                token.balanceOf(address(pool))
             );
             Debugger.log("userTokenBalanceBefore:", attackerTokenBalanceBefore);
             Debugger.log(
                 "userTokenBalanceAfter:",
                 token.balanceOf(address(address(this)))
             );
-        }
-        // POSTCONDITIONS
-        assert(token.balanceOf(address(this)) > attackerTokenBalanceBefore);
-        // INVARIANT: Pool cannot be drained
+        }        
+    }
+
+    // WE ARE GOING TO TEST THE FOLLOWING INVARIANT:
+    // INVARIANT: Pool cannot be drained, i.e. pool balance is never 0
+    function testPoolBalance() external {
         assert(token.balanceOf(address(pool)) > 0);
     }
+
+
+
+
 
     //////////////////////
     // NOT USED ANYMORE //

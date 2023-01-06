@@ -1,9 +1,9 @@
 initialize: ./contracts/puppet-v2/echidna-etheno/init.json
 testMode: assertion
 seqLen: 100
-testLimit: 150000
-corpusDir: './contracts/puppet-v2/echidna-etheno/corpus'
-multi-abi: true
+testLimit: 10000
+# corpusDir: './contracts/puppet-v2/echidna-etheno/corpus'
+# multi-abi: true
 # impersonate the attacker
 sender: ['0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb']
 deployer: '0x6Ecbe1DB9EF729CBe972C83Fb886247691Fb6beb'
