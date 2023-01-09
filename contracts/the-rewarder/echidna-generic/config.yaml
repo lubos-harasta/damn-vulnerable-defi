@@ -1,6 +1,7 @@
 testMode: assertion
 testLimit: 50000
 corpusDir: './contracts/the-rewarder/echidna-generic/corpus'
+multi-abi: false
 
 deployer: '0x10000'
 sender: ['0x30000'] # to have a different sender then deployer
